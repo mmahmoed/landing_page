@@ -9,7 +9,7 @@ export const BRAND_INFO = {
   subTagline: 'Precision PC Diagnostics, Component-Level Repair & Bespoke Cloud Web Applications for SMBs & Power Users',
   location: 'Tech Corridor & Metro District • On-Site & Remote Worldwide',
   phone: '085725884039',
-  whatsappNumber: '085725884039',
+  whatsappNumber: '6285725884039',
   whatsappMessage: 'Hi Alex! I am interested in a free consultation for tech repair / custom web app development.',
   email: 'alex@mmcompsolutions.dev',
   hours: 'Mon – Fri: 08:00 AM – 07:00 PM | Sat: 09:00 AM – 04:00 PM (Emergency 24/7 On-Call Available)',
@@ -17,7 +17,7 @@ export const BRAND_INFO = {
     github: 'https://github.com',
     linkedin: 'https://linkedin.com',
     twitter: 'https://twitter.com',
-    whatsapp: 'https://wa.me/085725884039'
+    whatsapp: 'https://wa.me/6285725884039'
   }
 };
 
