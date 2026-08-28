@@ -1,0 +1,6 @@
+{
+  "name": "TechPro Solutions - Web & PC Services",
+  "description": "Full-stack web application development, hardware diagnostics, network maintenance, and client-side browser utilities including an Excel Document Compressor.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
