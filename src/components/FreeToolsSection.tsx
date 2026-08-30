@@ -208,18 +208,7 @@ export const FreeToolsSection: React.FC = () => {
               >
                 {t.freeTools.tabInteractive}
               </button>
-              <button
-                id="excel-code-tab-btn"
-                onClick={() => setActiveTab('code')}
-                className={`px-3 py-1.5 rounded-md font-medium transition-all flex items-center gap-1.5 ${
-                  activeTab === 'code'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Code2 className="w-3.5 h-3.5" />
-                <span>{t.freeTools.tabCode}</span>
-              </button>
+              
             </div>
           </div>
 
