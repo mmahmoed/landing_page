@@ -32,7 +32,7 @@ export const ContactSection: React.FC = () => {
   };
 
   const handleLaunchWhatsApp = () => {
-    const text = `Hi Alex! My name is ${name || 'a prospective client'}. 
+    const text = `Hi Muh. Mahmud! My name is ${name || 'a prospective client'}. 
 I'm inquiring about: ${specificService} (${serviceDomain.toUpperCase()}).
 Details: ${projectDetails || 'I would like to schedule a free technical consultation.'}
 Contact: ${phone || email || 'Direct WhatsApp'}`;
@@ -54,7 +54,7 @@ Contact: ${phone || email || 'Direct WhatsApp'}`;
             Let's Discuss Your Hardware or Web Architecture
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            Direct 1-on-1 dialogue with senior engineer Alex Rivera. No salespeople, no delays.
+            Direct 1-on-1 dialogue with senior engineer Muh Mahmud. No salespeople, no delays.
           </p>
         </div>
 

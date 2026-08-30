@@ -119,7 +119,7 @@ export const Hero: React.FC<HeroProps> = ({ onSelectServiceTab }) => {
                 <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
               </div>
               <span className="ml-2 font-mono text-xs text-slate-400">
-                alex@mmcomp-terminal: ~/{activeVisualTab === 'web' ? 'web-architecture' : 'hardware-workbench'}
+                muhmahmud@mmcomp-terminal: ~/{activeVisualTab === 'web' ? 'web-architecture' : 'hardware-workbench'}
               </span>
             </div>
 

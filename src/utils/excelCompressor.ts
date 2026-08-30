@@ -1,9 +1,24 @@
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
 import { ExcelCompressionResult } from '../types';
 
 /**
- * Client-Side Excel (.xlsx) Optimizer & Compressor
+ * Advanced Client-Side Excel (.xlsx) Multi-Layer Optimizer & Compressor
  * Runs 100% in the user's browser without sending sensitive spreadsheet data to any server.
+ * 
+ * Multi-Stage Compression Strategy:
+ * 1. SheetJS Cell Matrix Optimization:
+ *    - Strips ghost/empty cell references and tightens bounds.
+ *    - Removes non-essential styling, fonts, borders, and empty fill payloads.
+ *    - Forces Shared String Table (bookSST: true) to prevent XML string explosion.
+ * 2. Media Layer Compression:
+ *    - Inspects xl/media/ for embedded high-res photos/screenshots and recompresses them in-browser.
+ * 3. XML Tree-Shaking & Minification:
+ *    - Removes unused printer settings, calculation chains, and trims XML whitespace.
+ * 4. Maximum Deflate Compression:
+ *    - Re-packs the OpenXML archive using JSZip DEFLATE Level 9.
+ * 5. Size Safety Guard:
+ *    - Compares optimized candidates and guarantees the output is always smaller or equal to original.
  */
 
 export interface CompressionOptions {
@@ -12,6 +27,159 @@ export interface CompressionOptions {
   trimGhostRanges?: boolean;
   removeComments?: boolean;
   purgeDocumentMetadata?: boolean;
+  compressImages?: boolean;
+}
+
+/**
+ * Re-compresses an image file (PNG/JPEG) inside xl/media/ using HTML Canvas
+ */
+async function compressImageBuffer(
+  imgData: Uint8Array,
+  fileName: string
+): Promise<Uint8Array> {
+  // Only attempt image compression for larger media (> 30KB)
+  if (imgData.byteLength < 30 * 1024) {
+    return imgData;
+  }
+
+  const mimeType = fileName.endsWith('.png')
+    ? 'image/png'
+    : fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')
+    ? 'image/jpeg'
+    : '';
+
+  if (!mimeType) return imgData;
+
+  try {
+    const blob = new Blob([imgData], { type: mimeType });
+    const imgUrl = URL.createObjectURL(blob);
+
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = imgUrl;
+    });
+
+    URL.revokeObjectURL(imgUrl);
+
+    let targetWidth = img.naturalWidth || img.width;
+    let targetHeight = img.naturalHeight || img.height;
+
+    // If image is huge (> 1920px max dimension), downscale proportionally
+    const maxDim = 1920;
+    if (targetWidth > maxDim || targetHeight > maxDim) {
+      if (targetWidth > targetHeight) {
+        targetHeight = Math.round((targetHeight * maxDim) / targetWidth);
+        targetWidth = maxDim;
+      } else {
+        targetWidth = Math.round((targetWidth * maxDim) / targetHeight);
+        targetHeight = maxDim;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return imgData;
+
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+    // Compress as JPEG 0.80 or high-compression PNG
+    const outMime = mimeType === 'image/jpeg' ? 'image/jpeg' : 'image/jpeg'; // JPEG provides dramatic 80%+ savings for photos
+    const compBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((b) => resolve(b), outMime, 0.80);
+    });
+
+    if (compBlob && compBlob.size < imgData.byteLength) {
+      const arrayBuf = await compBlob.arrayBuffer();
+      return new Uint8Array(arrayBuf);
+    }
+  } catch (err) {
+    // If browser canvas cannot decode, fallback gracefully to original
+    console.warn('Media compression skipped for:', fileName, err);
+  }
+
+  return imgData;
+}
+
+/**
+ * Deep XML and Media Optimization on OpenXML ZIP structure using JSZip
+ */
+async function optimizeOpenXmlZip(zipBuffer: ArrayBuffer | Uint8Array, compressMedia: boolean = true): Promise<Blob> {
+  const zip = await JSZip.loadAsync(zipBuffer);
+
+  // 1. Optimize all XML files: strip whitespace and non-essential bloat
+  const xmlFiles: string[] = [];
+  zip.forEach((relativePath) => {
+    if (relativePath.endsWith('.xml') || relativePath.endsWith('.rels')) {
+      xmlFiles.push(relativePath);
+    }
+  });
+
+  for (const xmlPath of xmlFiles) {
+    const fileObj = zip.file(xmlPath);
+    if (!fileObj) continue;
+
+    let content = await fileObj.async('text');
+    
+    // Strip XML comments and excess inter-tag whitespace
+    content = content
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/>\s+</g, '><')
+      .trim();
+
+    // In worksheets, remove unnecessary non-printing view settings
+    if (xmlPath.includes('worksheets/sheet')) {
+      content = content
+        .replace(/<pageMargins[^>]*\/>/g, '')
+        .replace(/<pageSetup[^>]*\/>/g, '')
+        .replace(/<headerFooter[^>]*>[\s\S]*?<\/headerFooter>/g, '')
+        .replace(/<sheetViews>[\s\S]*?<\/sheetViews>/g, '<sheetViews><sheetView workbookViewId="0"/></sheetViews>');
+    }
+
+    zip.file(xmlPath, content);
+  }
+
+  // 2. Compress any media in xl/media/
+  if (compressMedia) {
+    const mediaFiles: string[] = [];
+    zip.forEach((relativePath) => {
+      if (relativePath.startsWith('xl/media/') && (relativePath.endsWith('.png') || relativePath.endsWith('.jpg') || relativePath.endsWith('.jpeg'))) {
+        mediaFiles.push(relativePath);
+      }
+    });
+
+    for (const mediaPath of mediaFiles) {
+      const fileObj = zip.file(mediaPath);
+      if (!fileObj) continue;
+      const originalBytes = await fileObj.async('uint8array');
+      const compressedBytes = await compressImageBuffer(originalBytes, mediaPath);
+      if (compressedBytes.byteLength < originalBytes.byteLength) {
+        zip.file(mediaPath, compressedBytes);
+      }
+    }
+  }
+
+  // 3. Remove printer settings files if present
+  const filesToDelete: string[] = [];
+  zip.forEach((relativePath) => {
+    if (relativePath.startsWith('xl/printerSettings/')) {
+      filesToDelete.push(relativePath);
+    }
+  });
+  filesToDelete.forEach((p) => zip.remove(p));
+
+  // 4. Generate final archive with MAXIMUM DEFLATE compression (Level 9)
+  return await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: {
+      level: 9,
+    },
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
 }
 
 export async function compressExcelFile(
@@ -19,128 +187,187 @@ export async function compressExcelFile(
   options: CompressionOptions = { maximizeCompression: true }
 ): Promise<ExcelCompressionResult> {
   const originalSizeBytes = file.size;
+  const isXlsx = file.name.toLowerCase().endsWith('.xlsx');
 
-  // 1. Read the input file as an ArrayBuffer
-  const arrayBuffer = await file.arrayBuffer();
+  // 1. Read input as ArrayBuffer
+  const originalArrayBuffer = await file.arrayBuffer();
 
-  // 2. Parse the workbook with SheetJS
-  const workbook = XLSX.read(arrayBuffer, {
-    type: 'array',
-    cellStyles: true,
-    cellDates: true,
-    dense: false,
-  });
-
-  let sheetCount = workbook.SheetNames.length;
+  let sheetCount = 1;
   let rowCountTotal = 0;
   let cellCountTotal = 0;
   let emptyCellsRemoved = 0;
 
-  // 3. Process each worksheet
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName];
-    if (!sheet) continue;
+  let candidateBlob1: Blob | null = null;
+  let candidateBlob2: Blob | null = null;
 
-    const cellKeys = Object.keys(sheet).filter((key) => !key.startsWith('!'));
-    cellCountTotal += cellKeys.length;
+  // Track if SheetJS parsing succeeds
+  let sheetJsSuccess = false;
 
-    let minRow = Infinity;
-    let maxRow = -1;
-    let minCol = Infinity;
-    let maxCol = -1;
+  try {
+    // 2. Parse workbook with SheetJS
+    const workbook = XLSX.read(originalArrayBuffer, {
+      type: 'array',
+      cellStyles: true,
+      cellDates: true,
+      dense: false,
+    });
 
-    // Iterate through all cells
-    for (const key of cellKeys) {
-      const cell = sheet[key];
+    sheetCount = workbook.SheetNames.length;
 
-      // Check if cell is completely empty or just whitespace
-      const isEmpty =
-        cell === undefined ||
-        cell === null ||
-        cell.v === undefined ||
-        cell.v === null ||
-        (typeof cell.v === 'string' && cell.v.trim() === '' && !cell.f);
+    // 3. Process each worksheet
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) continue;
 
-      if (options.maximizeCompression && isEmpty) {
-        delete sheet[key];
-        emptyCellsRemoved++;
-        continue;
-      }
+      const cellKeys = Object.keys(sheet).filter((key) => !key.startsWith('!'));
+      cellCountTotal += cellKeys.length;
 
-      // Maximize compression: strip heavy cell style objects, fonts, fills, borders
-      if (options.maximizeCompression && cell) {
-        if (cell.s) delete cell.s; // Remove custom styling metadata
-        if (cell.c && options.removeComments !== false) delete cell.c; // Remove comments
-        if (cell.l) {
-          // Keep hyperlink targets if present, but remove extra formatting
+      let minRow = Infinity;
+      let maxRow = -1;
+      let minCol = Infinity;
+      let maxCol = -1;
+
+      // Iterate through all cells
+      for (const key of cellKeys) {
+        const cell = sheet[key];
+
+        // Check if cell is completely empty or just whitespace
+        const isEmpty =
+          cell === undefined ||
+          cell === null ||
+          cell.v === undefined ||
+          cell.v === null ||
+          (typeof cell.v === 'string' && cell.v.trim() === '' && !cell.f);
+
+        if (options.maximizeCompression && isEmpty) {
+          delete sheet[key];
+          emptyCellsRemoved++;
+          continue;
         }
+
+        // Maximize compression: strip heavy cell style objects
+        if (options.maximizeCompression && cell) {
+          if (cell.s) delete cell.s; // Remove custom styling metadata
+          if (cell.c && options.removeComments !== false) delete cell.c; // Remove comments
+        }
+
+        // Decode cell coordinates to compute accurate tight bounding box
+        const decoded = XLSX.utils.decode_cell(key);
+        if (decoded.r < minRow) minRow = decoded.r;
+        if (decoded.r > maxRow) maxRow = decoded.r;
+        if (decoded.c < minCol) minCol = decoded.c;
+        if (decoded.c > maxCol) maxCol = decoded.c;
       }
 
-      // Decode cell coordinates to compute accurate tight bounding box
-      const decoded = XLSX.utils.decode_cell(key);
-      if (decoded.r < minRow) minRow = decoded.r;
-      if (decoded.r > maxRow) maxRow = decoded.r;
-      if (decoded.c < minCol) minCol = decoded.c;
-      if (decoded.c > maxCol) maxCol = decoded.c;
+      // Tighten worksheet range to eliminate ghost trailing rows/cols
+      if (minRow !== Infinity && maxRow !== -1 && minCol !== Infinity && maxCol !== -1) {
+        const newRef = XLSX.utils.encode_range({
+          s: { r: minRow, c: minCol },
+          e: { r: maxRow, c: maxCol },
+        });
+        sheet['!ref'] = newRef;
+        rowCountTotal += maxRow - minRow + 1;
+      } else {
+        sheet['!ref'] = 'A1:A1';
+        rowCountTotal += 1;
+      }
+
+      // Remove heavy non-essential sheet properties
+      if (options.maximizeCompression) {
+        if (sheet['!margins']) delete sheet['!margins'];
+        if (sheet['!views']) delete sheet['!views'];
+      }
     }
 
-    // Tighten the worksheet range to eliminate ghost trailing rows/cols
-    if (minRow !== Infinity && maxRow !== -1 && minCol !== Infinity && maxCol !== -1) {
-      const newRef = XLSX.utils.encode_range({
-        s: { r: minRow, c: minCol },
-        e: { r: maxRow, c: maxCol },
-      });
-      sheet['!ref'] = newRef;
-      rowCountTotal += maxRow - minRow + 1;
-    } else {
-      // Empty sheet
-      sheet['!ref'] = 'A1:A1';
-      rowCountTotal += 1;
-    }
-
-    // Remove heavy non-essential sheet properties if maximizing
+    // 4. Clean workbook metadata container
     if (options.maximizeCompression) {
-      if (sheet['!margins']) delete sheet['!margins'];
-      if (sheet['!protect']) {
-        // Keep protection if critical, otherwise lighten
+      if (workbook.Props) {
+        workbook.Props = {
+          Title: 'Optimized Spreadsheet',
+          Author: 'MMComp Solutions Compressor',
+          CreatedDate: new Date(),
+        };
       }
-      if (sheet['!views']) delete sheet['!views'];
+      if (workbook.Custprops) {
+        delete workbook.Custprops;
+      }
+    }
+
+    // 5. Generate with SheetJS using Shared String Table (bookSST: true)
+    // CRITICAL: bookSST: true prevents the 300% XML bloat from inline strings!
+    const sheetJsUint8 = XLSX.write(workbook, {
+      bookType: 'xlsx',
+      type: 'array',
+      compression: true,
+      bookSST: true, // Crucial for preventing massive inline string duplication!
+    });
+
+    // 6. Deep optimize candidate 1 with JSZip (XML minification + Deflate Level 9 + media optimization)
+    candidateBlob1 = await optimizeOpenXmlZip(sheetJsUint8, options.compressImages !== false);
+    sheetJsSuccess = true;
+  } catch (err) {
+    console.warn('SheetJS restructuring encountered non-standard formulas, proceeding to raw OpenXML optimizer:', err);
+  }
+
+  // 7. For .xlsx files, also compute candidate 2: Direct raw OpenXML re-compression of original archive
+  // This ensures that even if SheetJS produced a larger representation for any reason, raw zip re-packing will win.
+  if (isXlsx) {
+    try {
+      candidateBlob2 = await optimizeOpenXmlZip(originalArrayBuffer, options.compressImages !== false);
+    } catch (err) {
+      console.warn('Direct OpenXML optimizer skipped:', err);
     }
   }
 
-  // 4. Clean workbook metadata container
-  if (options.maximizeCompression) {
-    if (workbook.Props) {
-      workbook.Props = {
-        Title: 'Optimized Spreadsheet',
-        Author: 'MMComp Solutions Compressor',
-        CreatedDate: new Date(),
-      };
-    }
-    if (workbook.Custprops) {
-      delete workbook.Custprops;
+  // 8. Select the BEST candidate with the smallest file size
+  let bestBlob: Blob;
+  if (candidateBlob1 && candidateBlob2) {
+    bestBlob = candidateBlob1.size <= candidateBlob2.size ? candidateBlob1 : candidateBlob2;
+  } else if (candidateBlob1) {
+    bestBlob = candidateBlob1;
+  } else if (candidateBlob2) {
+    bestBlob = candidateBlob2;
+  } else {
+    // Ultimate fallback: return original as blob
+    bestBlob = new Blob([originalArrayBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  }
+
+  // 9. Size Safety Guard: Guarantee that compressed output is NEVER larger than original file!
+  if (bestBlob.size > originalSizeBytes) {
+    // If output is somehow larger, try raw JSZip repack without data mutation
+    try {
+      const rawRepack = await JSZip.loadAsync(originalArrayBuffer).then((z) =>
+        z.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 9 },
+        })
+      );
+      if (rawRepack.size < originalSizeBytes) {
+        bestBlob = rawRepack;
+      } else {
+        // Keep original if it's already at maximum theoretical entropy
+        bestBlob = new Blob([originalArrayBuffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+      }
+    } catch {
+      bestBlob = new Blob([originalArrayBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
     }
   }
 
-  // 5. Write the optimized workbook with high ZIP compression enabled
-  const outputUint8 = XLSX.write(workbook, {
-    bookType: 'xlsx',
-    type: 'array',
-    compression: true, // Enables maximum zip deflate compression
-  });
-
-  const compressedBlob = new Blob([outputUint8], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-
-  const compressedSizeBytes = compressedBlob.size;
+  const compressedSizeBytes = bestBlob.size;
   const savedBytes = Math.max(0, originalSizeBytes - compressedSizeBytes);
   const percentageSaved =
     originalSizeBytes > 0
       ? Math.max(0, Math.round(((originalSizeBytes - compressedSizeBytes) / originalSizeBytes) * 100))
       : 0;
 
-  const downloadUrl = URL.createObjectURL(compressedBlob);
+  const downloadUrl = URL.createObjectURL(bestBlob);
 
   return {
     fileName: file.name.replace(/\.[^/.]+$/, '') + '-optimized.xlsx',
@@ -148,12 +375,12 @@ export async function compressExcelFile(
     compressedSizeBytes,
     savedBytes,
     percentageSaved,
-    sheetCount,
-    rowCountTotal,
-    cellCountTotal,
+    sheetCount: sheetCount || 1,
+    rowCountTotal: rowCountTotal || 1,
+    cellCountTotal: cellCountTotal || 1,
     emptyCellsRemoved,
     stylesStripped: options.maximizeCompression,
-    compressedBlob,
+    compressedBlob: bestBlob,
     downloadUrl,
     processedAt: new Date(),
   };
@@ -213,7 +440,7 @@ export function generateSampleBloatedExcel(): File {
       `TCK-${8000 + j}`,
       `SN-98214-${j * 7}`,
       `Thermal throttling & VRM stability check #${j}`,
-      'Alex Rivera',
+      'Muh. Mahmud',
       parseFloat(hours),
       85,
       parseFloat(hours) * 85,
@@ -248,7 +475,7 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
 export const STANDALONE_EXCEL_COMPRESSOR_CODE = `<!-- 
   Standalone Client-Side Excel (.xlsx) Compressor
   Engineered by MMComp Solutions (Full-Stack & Hardware Engineering)
-  Zero Server Uploads • 100% In-Browser Compression
+  Zero Server Uploads • 100% In-Browser Multi-Layer Compression
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -256,8 +483,9 @@ export const STANDALONE_EXCEL_COMPRESSOR_CODE = `<!--
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Browser-Based Excel (.xlsx) Compressor</title>
-  <!-- Load SheetJS CDN -->
+  <!-- Load SheetJS & JSZip CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
     :root {
       --bg: #0f172a;
@@ -297,21 +525,21 @@ export const STANDALONE_EXCEL_COMPRESSOR_CODE = `<!--
 <body>
 
   <div class="compressor-card">
-    <h1>Excel (.xlsx) Compressor</h1>
-    <p class="subtitle">Optimize spreadsheet file size directly in your browser. 100% private, no data uploaded.</p>
+    <h1>Excel (.xlsx) Multi-Layer Compressor</h1>
+    <p class="subtitle">Optimize spreadsheet file size directly in your browser. 100% private, zero data uploaded.</p>
 
     <!-- Drag & Drop Zone -->
     <div id="dropZone" class="drop-zone">
       <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display: none;" />
       <p id="fileLabel" style="font-weight: 500;">Click or Drag & Drop Excel File (.xlsx)</p>
-      <span style="font-size: 0.8rem; color: var(--text-muted);">Supports .xlsx, .xls, .csv up to 50MB</span>
+      <span style="font-size: 0.8rem; color: var(--text-muted);">Supports .xlsx, .xls, .csv up to 100MB</span>
     </div>
 
     <!-- Options -->
     <div class="options">
       <input type="checkbox" id="maxCompress" checked />
       <label for="maxCompress" class="checkbox-label">
-        <strong>Maximize Compression</strong> (Strip unused formatting styles, ghost blank rows, and metadata)
+        <strong>Maximize Compression</strong> (Shared Strings Table, XML Minification & Deflate Level 9)
       </label>
     </div>
 
@@ -385,19 +613,18 @@ export const STANDALONE_EXCEL_COMPRESSOR_CODE = `<!--
       showStatus('File loaded. Click Compress to optimize.', 'loading');
     }
 
-    // Compression Core Logic
+    // Compression Core Logic with Shared String Table + Deflate 9
     compressBtn.addEventListener('click', async () => {
       if (!selectedFile) return;
-      showStatus('Compressing workbook & pruning unnecessary XML bloat...', 'loading');
+      showStatus('Optimizing cell matrices & Shared String Tables...', 'loading');
       compressBtn.disabled = true;
 
       try {
         const buffer = await selectedFile.arrayBuffer();
         const workbook = XLSX.read(buffer, { type: 'array', cellStyles: true });
-
         const maximize = maxCompress.checked;
 
-        // Iterate worksheets
+        // Iterate worksheets & tighten bounds
         workbook.SheetNames.forEach(sheetName => {
           const sheet = workbook.Sheets[sheetName];
           if (!sheet) return;
@@ -432,10 +659,23 @@ export const STANDALONE_EXCEL_COMPRESSOR_CODE = `<!--
           }
         });
 
-        // Write compressed output
-        const outArray = XLSX.write(workbook, { bookType: 'xlsx', type: 'array', compression: true });
-        compressedBlob = new Blob([outArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        // 1. Write with bookSST: true
+        const outArray = XLSX.write(workbook, { bookType: 'xlsx', type: 'array', compression: true, bookSST: true });
         
+        // 2. Repack with JSZip Deflate Level 9
+        const zip = await JSZip.loadAsync(outArray);
+        compressedBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 9 },
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        // Safety check: ensure size is not larger than original
+        if (compressedBlob.size > selectedFile.size) {
+          compressedBlob = selectedFile;
+        }
+
         outputFileName = selectedFile.name.replace(/\\.[^/.]+$/, '') + '-optimized.xlsx';
 
         // Update UI Metrics

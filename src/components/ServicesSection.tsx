@@ -80,7 +80,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
   const currentEst = calculateEstimate();
 
   const handleEstimateWhatsApp = () => {
-    const text = `Hi Alex! I used your online estimator for a ${estType === 'web' ? 'Custom Web Project' : 'Hardware Repair'} (${estService.toUpperCase()}). Estimated quote ~$${currentEst.price}. Can we discuss details?`;
+    const text = `Hi Muh. Mahmud! I used your online estimator for a ${estType === 'web' ? 'Custom Web Project' : 'Hardware Repair'} (${estService.toUpperCase()}). Estimated quote ~$${currentEst.price}. Can we discuss details?`;
     window.open(`https://wa.me/${BRAND_INFO.whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
   };
 

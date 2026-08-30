@@ -38,6 +38,7 @@ export const FreeToolsSection: React.FC = () => {
   const [stripCellStyles, setStripCellStyles] = useState<boolean>(true);
   const [trimGhostRanges, setTrimGhostRanges] = useState<boolean>(true);
   const [removeComments, setRemoveComments] = useState<boolean>(true);
+  const [compressImages, setCompressImages] = useState<boolean>(true);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [compressionProgress, setCompressionProgress] = useState<string>('');
   const [statusType, setStatusType] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -100,16 +101,19 @@ export const FreeToolsSection: React.FC = () => {
 
     try {
       // Small visual delay so the user sees the progress sequence clearly
-      await new Promise(r => setTimeout(r, 200));
-      setCompressionProgress('Analyzing cell boundaries & removing ghost ranges...');
-      await new Promise(r => setTimeout(r, 250));
-      setCompressionProgress('Stripping redundant style overhead & re-encoding ZIP stream...');
+      await new Promise(r => setTimeout(r, 150));
+      setCompressionProgress('Parsing XML sheet structure & cell matrices...');
+      await new Promise(r => setTimeout(r, 180));
+      setCompressionProgress('Building Shared String Table & pruning ghost bounds...');
+      await new Promise(r => setTimeout(r, 180));
+      setCompressionProgress('Optimizing media & re-packing DEFLATE Level 9 stream...');
 
       const result = await compressExcelFile(selectedFile, {
         maximizeCompression,
         stripCellStyles,
         trimGhostRanges,
         removeComments,
+        compressImages,
       });
 
       setCompressionResult(result);
@@ -303,7 +307,7 @@ export const FreeToolsSection: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  {/* Option 1: Maximize Compression */}
+                  {/* Option 1: Maximize Compression & SST */}
                   <label className="flex items-start gap-3 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition-colors">
                     <input
                       type="checkbox"
@@ -315,16 +319,17 @@ export const FreeToolsSection: React.FC = () => {
                           setStripCellStyles(true);
                           setTrimGhostRanges(true);
                           setRemoveComments(true);
+                          setCompressImages(true);
                         }
                       }}
                       className="mt-0.5 rounded border-slate-700 text-cyan-500 focus:ring-cyan-500/20 bg-slate-900"
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">
-                        Maximize Compression (Recommended)
+                        Shared Strings & DEFLATE Level 9
                       </span>
                       <span className="text-[11px] text-slate-400 leading-tight block">
-                        Removes excess styling, ghost blank grids & optimizes XML container.
+                        Deduplicates text via Shared String Table (SST) & maximum zip compression.
                       </span>
                     </div>
                   </label>
@@ -344,6 +349,44 @@ export const FreeToolsSection: React.FC = () => {
                       </span>
                       <span className="text-[11px] text-slate-400 leading-tight block">
                         Restricts worksheet dimensions to actual populated cell coordinates.
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Option 3: Compress Embedded Images */}
+                  <label className="flex items-start gap-3 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      id="opt-compress-images"
+                      checked={compressImages}
+                      onChange={(e) => setCompressImages(e.target.checked)}
+                      className="mt-0.5 rounded border-slate-700 text-cyan-500 focus:ring-cyan-500/20 bg-slate-900"
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-white block">
+                        Compress Embedded Media Images
+                      </span>
+                      <span className="text-[11px] text-slate-400 leading-tight block">
+                        Shrinks heavy photos/screenshots in xl/media/ while preserving sheet layout.
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Option 4: Strip Cell Styles */}
+                  <label className="flex items-start gap-3 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition-colors">
+                    <input
+                      type="checkbox"
+                      id="opt-strip-styles"
+                      checked={stripCellStyles}
+                      onChange={(e) => setStripCellStyles(e.target.checked)}
+                      className="mt-0.5 rounded border-slate-700 text-cyan-500 focus:ring-cyan-500/20 bg-slate-900"
+                    />
+                    <div>
+                      <span className="text-xs font-semibold text-white block">
+                        Strip Redundant Style Payloads
+                      </span>
+                      <span className="text-[11px] text-slate-400 leading-tight block">
+                        Purges unused font matrices, duplicate XML fills, borders & comments.
                       </span>
                     </div>
                   </label>

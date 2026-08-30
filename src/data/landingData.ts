@@ -3,7 +3,7 @@ import { ServiceItem, PortfolioItem, Testimonial, FreeToolLeadMagnet, ValuePropI
 export const BRAND_INFO = {
   name: 'MMComp Solutions',
   shortName: 'MMComp',
-  founder: 'Alex Rivera',
+  founder: 'Muh. Mahmud',
   credentials: 'B.S. Computer Engineering • CompTIA A+ & Network+ • Full-Stack Systems Architect',
   tagline: 'Engineering High-Performance Web Software & Restoring Mission-Critical Hardware',
   subTagline: 'Precision PC Diagnostics, Component-Level Repair & Bespoke Cloud Web Applications for SMBs & Power Users',
