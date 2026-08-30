@@ -176,7 +176,7 @@ export const TRANSLATIONS: Record<Language, TranslationData> = {
       phone: '085725884039',
       whatsappNumber: '6285725884039',
       whatsappMessage: 'Halo Muh. Mahmud! Saya tertarik untuk konsultasi gratis mengenai servis hardware / pembuatan aplikasi web custom.',
-      email: 'muhmahmud@mmcompsolutions.dev',
+      email: 'muhmahmud.ti@gmail.com',
       hours: 'Senin – Jumat: 08:00 – 19:00 WIB | Sabtu: 09:00 – 16:00 WIB (Darurat Siaga 24 Jam)',
     },
     nav: {

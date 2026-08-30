@@ -12,7 +12,7 @@ export const BRAND_INFO = {
   phone: '085725884039',
   whatsappNumber: '6285725884039',
   whatsappMessage: 'Halo Muh. Mahmud! Saya tertarik untuk konsultasi gratis mengenai servis hardware / pembuatan aplikasi web custom.',
-  email: 'muhmahmud@mmcompsolutions.dev',
+  email: 'muhmahmud.ti@gmail.com',
   hours: 'Mon – Fri: 08:00 AM – 07:00 PM | Sat: 09:00 AM – 04:00 PM (Emergency 24/7 On-Call Available)',
   socials: {
     github: 'https://github.com',
