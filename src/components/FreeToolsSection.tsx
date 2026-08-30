@@ -6,32 +6,31 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Download, 
-  FileText, 
   Settings2, 
   Lock, 
   Copy, 
   Check, 
   Code2, 
   RefreshCw, 
-  Cpu, 
-  Binary, 
   ShieldCheck, 
-  Layers,
-  ArrowRight,
-  Database
+  ArrowRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { 
   compressExcelFile, 
   generateSampleBloatedExcel, 
   formatBytes, 
-  STANDALONE_EXCEL_COMPRESSOR_CODE,
-  CompressionOptions 
+  STANDALONE_EXCEL_COMPRESSOR_CODE 
 } from '../utils/excelCompressor';
 import { ExcelCompressionResult } from '../types';
-import { FREE_TOOLS_LEAD_MAGNETS } from '../data/landingData';
+import { getFreeToolsData } from '../data/landingData';
+import { useLanguage } from '../context/LanguageContext';
+import { TRANSLATIONS } from '../data/translations';
 
 export const FreeToolsSection: React.FC = () => {
+  const { language } = useLanguage();
+  const t = TRANSLATIONS[language];
+
   // Compression state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [maximizeCompression, setMaximizeCompression] = useState<boolean>(true);
@@ -48,9 +47,6 @@ export const FreeToolsSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tool' | 'code'>('tool');
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
 
-  // Sub-tools mini interactive modal states
-  const [activeMiniTool, setActiveMiniTool] = useState<string | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
@@ -59,7 +55,9 @@ export const FreeToolsSection: React.FC = () => {
 
     if (!hasValidExt) {
       setStatusType('error');
-      setErrorMessage('Please select a valid Excel (.xlsx, .xls) or CSV document.');
+      setErrorMessage(language === 'id' 
+        ? 'Silakan pilih file dokumen Excel (.xlsx, .xls) atau CSV yang valid.' 
+        : 'Please select a valid Excel (.xlsx, .xls) or CSV document.');
       return;
     }
 
@@ -97,16 +95,19 @@ export const FreeToolsSection: React.FC = () => {
 
     setIsProcessing(true);
     setStatusType('loading');
-    setCompressionProgress('Parsing XML sheet structure & cell matrices...');
+    setCompressionProgress(language === 'id' 
+      ? 'Memeriksa struktur XML sheet & matriks sel...' 
+      : 'Parsing XML sheet structure & cell matrices...');
 
     try {
-      // Small visual delay so the user sees the progress sequence clearly
       await new Promise(r => setTimeout(r, 150));
-      setCompressionProgress('Parsing XML sheet structure & cell matrices...');
+      setCompressionProgress(language === 'id'
+        ? 'Menyusun Shared String Table & membersihkan ghost range...'
+        : 'Building Shared String Table & pruning ghost bounds...');
       await new Promise(r => setTimeout(r, 180));
-      setCompressionProgress('Building Shared String Table & pruning ghost bounds...');
-      await new Promise(r => setTimeout(r, 180));
-      setCompressionProgress('Optimizing media & re-packing DEFLATE Level 9 stream...');
+      setCompressionProgress(language === 'id'
+        ? 'Mengompres media gambar & mengemas ulang stream DEFLATE Level 9...'
+        : 'Optimizing media & re-packing DEFLATE Level 9 stream...');
 
       const result = await compressExcelFile(selectedFile, {
         maximizeCompression,
@@ -120,7 +121,6 @@ export const FreeToolsSection: React.FC = () => {
       setStatusType('success');
       setCompressionProgress('');
 
-      // Trigger celebratory confetti if savings were achieved
       if (result.percentageSaved > 0) {
         confetti({
           particleCount: 60,
@@ -132,7 +132,7 @@ export const FreeToolsSection: React.FC = () => {
     } catch (err: any) {
       console.error('Compression failed:', err);
       setStatusType('error');
-      setErrorMessage(`Error: ${err?.message || 'Could not process or compress the spreadsheet. Please verify file integrity.'}`);
+      setErrorMessage(`Error: ${err?.message || (language === 'id' ? 'Gagal memproses file spreadsheet. Pastikan file tidak rusak.' : 'Could not process or compress the spreadsheet. Please verify file integrity.')}`);
     } finally {
       setIsProcessing(false);
     }
@@ -162,13 +162,13 @@ export const FreeToolsSection: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-3">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Lead Magnet & Browser Utilities</span>
+            <span>{t.freeTools.badge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Free Client-Side Engineering Tools
+            {t.freeTools.title}
           </h2>
           <p className="mt-3 text-slate-300 text-base sm:text-lg">
-            High-speed, zero-server browser utilities. Because your spreadsheets, invoices, and diagnostic payloads should remain <strong>100% private</strong> on your local machine.
+            {t.freeTools.subtitle}
           </p>
         </div>
 
@@ -183,14 +183,14 @@ export const FreeToolsSection: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-white text-base sm:text-lg flex items-center gap-2">
-                  <span>Excel Document (.xlsx) Compressor</span>
+                  <span>{t.freeTools.title}</span>
                   <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     Live Tool
                   </span>
                 </h3>
                 <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>100% In-Browser Execution • Zero Server Uploads</span>
+                  <span>{t.freeTools.privacyNotice}</span>
                 </p>
               </div>
             </div>
@@ -206,7 +206,7 @@ export const FreeToolsSection: React.FC = () => {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                App Interface
+                {t.freeTools.tabInteractive}
               </button>
               <button
                 id="excel-code-tab-btn"
@@ -218,7 +218,7 @@ export const FreeToolsSection: React.FC = () => {
                 }`}
               >
                 <Code2 className="w-3.5 h-3.5" />
-                <span>Clean Source Code</span>
+                <span>{t.freeTools.tabCode}</span>
               </button>
             </div>
           </div>
@@ -262,19 +262,19 @@ export const FreeToolsSection: React.FC = () => {
                       {selectedFile.name}
                     </p>
                     <p className="text-xs text-cyan-400 font-mono">
-                      Selected File Size: {formatBytes(selectedFile.size)}
+                      {t.freeTools.dropZoneSelected} {formatBytes(selectedFile.size)}
                     </p>
                     <p className="text-xs text-slate-400 pt-1">
-                      Click to choose another spreadsheet
+                      {language === 'id' ? 'Klik untuk memilih file spreadsheet lainnya' : 'Click to choose another spreadsheet'}
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     <p className="text-base font-semibold text-slate-200">
-                      Drag & Drop your Excel (.xlsx, .xls, .csv) file here
+                      {t.freeTools.dropZoneTitle}
                     </p>
                     <p className="text-xs text-slate-400">
-                      Or click to browse from your computer (Processed locally in memory)
+                      {t.freeTools.dropZoneSubtitle}
                     </p>
                   </div>
                 )}
@@ -284,7 +284,7 @@ export const FreeToolsSection: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
                 <div className="flex items-center gap-1.5 text-slate-400">
                   <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Files are processed in your browser memory and never uploaded to any server.</span>
+                  <span>{t.freeTools.privacyNotice}</span>
                 </div>
                 <button
                   type="button"
@@ -292,7 +292,7 @@ export const FreeToolsSection: React.FC = () => {
                   className="text-cyan-400 hover:text-cyan-300 font-semibold inline-flex items-center gap-1.5 hover:underline"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Load Sample Bloated Excel (1-Click Test)</span>
+                  <span>{t.freeTools.sampleBtn}</span>
                 </button>
               </div>
 
@@ -301,9 +301,11 @@ export const FreeToolsSection: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                     <Settings2 className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Compression Parameters</span>
+                    <span>{t.freeTools.optionsTitle}</span>
                   </span>
-                  <span className="text-[11px] text-slate-400">Data integrity preserved</span>
+                  <span className="text-[11px] text-slate-400">
+                    {language === 'id' ? 'Integritas data tetap terjaga 100%' : 'Data integrity preserved'}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -326,10 +328,10 @@ export const FreeToolsSection: React.FC = () => {
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">
-                        Shared Strings & DEFLATE Level 9
+                        {t.freeTools.optSST}
                       </span>
                       <span className="text-[11px] text-slate-400 leading-tight block">
-                        Deduplicates text via Shared String Table (SST) & maximum zip compression.
+                        {t.freeTools.optSSTDesc}
                       </span>
                     </div>
                   </label>
@@ -345,10 +347,10 @@ export const FreeToolsSection: React.FC = () => {
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">
-                        Purge Ghost Rows & Tighten Range
+                        {t.freeTools.optGhost}
                       </span>
                       <span className="text-[11px] text-slate-400 leading-tight block">
-                        Restricts worksheet dimensions to actual populated cell coordinates.
+                        {t.freeTools.optGhostDesc}
                       </span>
                     </div>
                   </label>
@@ -364,10 +366,10 @@ export const FreeToolsSection: React.FC = () => {
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">
-                        Compress Embedded Media Images
+                        {t.freeTools.optImages}
                       </span>
                       <span className="text-[11px] text-slate-400 leading-tight block">
-                        Shrinks heavy photos/screenshots in xl/media/ while preserving sheet layout.
+                        {t.freeTools.optImagesDesc}
                       </span>
                     </div>
                   </label>
@@ -383,10 +385,10 @@ export const FreeToolsSection: React.FC = () => {
                     />
                     <div>
                       <span className="text-xs font-semibold text-white block">
-                        Strip Redundant Style Payloads
+                        {t.freeTools.optStyles}
                       </span>
                       <span className="text-[11px] text-slate-400 leading-tight block">
-                        Purges unused font matrices, duplicate XML fills, borders & comments.
+                        {t.freeTools.optStylesDesc}
                       </span>
                     </div>
                   </label>
@@ -408,12 +410,12 @@ export const FreeToolsSection: React.FC = () => {
                   {isProcessing ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
-                      <span>{compressionProgress || 'Compressing Excel File...'}</span>
+                      <span>{compressionProgress || t.freeTools.compressingBtn}</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>{selectedFile ? `Compress "${selectedFile.name}"` : 'Select an Excel File to Compress'}</span>
+                      <span>{selectedFile ? `${t.freeTools.compressBtn} ("${selectedFile.name}")` : t.freeTools.compressBtn}</span>
                     </>
                   )}
                 </button>
@@ -423,7 +425,7 @@ export const FreeToolsSection: React.FC = () => {
               {statusType === 'loading' && (
                 <div className="p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-300 text-xs flex items-center gap-2.5 animate-pulse">
                   <RefreshCw className="w-4 h-4 animate-spin flex-shrink-0" />
-                  <span>{compressionProgress || 'Compressing...'}</span>
+                  <span>{compressionProgress || t.freeTools.compressingBtn}</span>
                 </div>
               )}
 
@@ -439,35 +441,35 @@ export const FreeToolsSection: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
                       <CheckCircle2 className="w-5 h-5" />
-                      <span>Successfully compressed!</span>
+                      <span>{language === 'id' ? 'Kompresi dokumen berhasil dioptimasi!' : 'Successfully compressed!'}</span>
                     </div>
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      -{compressionResult.percentageSaved}% Reduction
+                      -{compressionResult.percentageSaved}% {t.freeTools.metrics.savedPercentage}
                     </span>
                   </div>
 
                   {/* Results Metrics Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Original Size</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">{t.freeTools.metrics.originalSize}</span>
                       <p className="text-sm font-bold text-slate-200 mt-0.5 font-mono">
                         {formatBytes(compressionResult.originalSizeBytes)}
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Optimized Size</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">{t.freeTools.metrics.optimizedSize}</span>
                       <p className="text-sm font-bold text-cyan-300 mt-0.5 font-mono">
                         {formatBytes(compressionResult.compressedSizeBytes)}
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Total Saved</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">{t.freeTools.metrics.savedPercentage}</span>
                       <p className="text-sm font-bold text-emerald-400 mt-0.5 font-mono">
                         {formatBytes(compressionResult.savedBytes)}
                       </p>
                     </div>
                     <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-center">
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Sheets / Rows</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">{t.freeTools.metrics.sheetsProcessed} / {language === 'id' ? 'Baris' : 'Rows'}</span>
                       <p className="text-sm font-bold text-purple-300 mt-0.5 font-mono">
                         {compressionResult.sheetCount} / {compressionResult.rowCountTotal}
                       </p>
@@ -481,7 +483,7 @@ export const FreeToolsSection: React.FC = () => {
                     className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.01] active:scale-98"
                   >
                     <Download className="w-4 h-4 stroke-[2.5]" />
-                    <span>Download Compressed File ({compressionResult.fileName})</span>
+                    <span>{t.freeTools.downloadBtn} ({compressionResult.fileName})</span>
                   </button>
                 </div>
               )}
@@ -493,10 +495,12 @@ export const FreeToolsSection: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-bold text-white">
-                    Standalone HTML / CSS / Modern JavaScript Code
+                    {t.freeTools.sourceCodeTitle}
                   </h4>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Self-contained single-file code ready to drop into any website or CMS.
+                    {language === 'id' 
+                      ? 'Kode mandiri satu file (Single-file HTML/JS) siap pakai di website, CMS, atau intranet kantor tanpa dependency backend.'
+                      : 'Self-contained single-file code ready to drop into any website, CMS, or intranet.'}
                   </p>
                 </div>
                 <button
@@ -506,12 +510,12 @@ export const FreeToolsSection: React.FC = () => {
                   {copiedCode ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Copied to Clipboard!</span>
+                      <span>{t.freeTools.copiedBtn}</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Copy Standalone Code</span>
+                      <span>{t.freeTools.copyCodeBtn}</span>
                     </>
                   )}
                 </button>
@@ -529,15 +533,17 @@ export const FreeToolsSection: React.FC = () => {
         <div className="mt-8">
           <div className="text-center mb-6">
             <h3 className="text-lg font-bold text-white">
-              Additional Free Client-Side Developer Utilities
+              {language === 'id' ? 'Utilitas Gratis Lainnya dari MMComp Lab' : 'Additional Free Client-Side Developer Utilities'}
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Built to demonstrate high-performance client-side computation and privacy-first web architecture.
+              {language === 'id'
+                ? 'Didesain untuk mendemonstrasikan komputasi performa tinggi di browser dengan privasi 100% aman.'
+                : 'Built to demonstrate high-performance client-side computation and privacy-first web architecture.'}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {FREE_TOOLS_LEAD_MAGNETS.filter(t => !t.activeComponent).map((tool) => (
+            {getFreeToolsData(language).filter(tool => !tool.activeComponent).map((tool) => (
               <div
                 key={tool.id}
                 className="p-5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between group"
@@ -565,7 +571,7 @@ export const FreeToolsSection: React.FC = () => {
                     href="#contact"
                     className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform"
                   >
-                    <span>Request Custom Tool</span>
+                    <span>{language === 'id' ? 'Minta Tool Khusus' : 'Request Custom Tool'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </a>
                 </div>

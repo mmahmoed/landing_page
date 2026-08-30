@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Wrench, 
   Code2, 
-  Sparkles, 
   Menu, 
   X, 
   MessageSquare, 
-  PhoneCall, 
-  ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Globe
 } from 'lucide-react';
 import { BRAND_INFO } from '../data/landingData';
+import { useLanguage } from '../context/LanguageContext';
+import { TRANSLATIONS } from '../data/translations';
 
 interface HeaderProps {
   onOpenConsultation?: (defaultCategory?: string) => void;
@@ -19,6 +18,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenConsultation }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { language, setLanguage } = useLanguage();
+  const t = TRANSLATIONS[language];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,18 +30,25 @@ export const Header: React.FC<HeaderProps> = ({ onOpenConsultation }) => {
   }, []);
 
   const navLinks = [
-    { name: 'Hardware & PC Services', href: '#services' },
-    { name: 'Custom Web Apps', href: '#web-apps' },
-    { name: 'Free Tools', href: '#free-tools', badge: 'New' },
-    { name: 'Portfolio', href: '#portfolio' },
-    { name: 'Values', href: '#values' },
-    { name: 'Reviews', href: '#reviews' },
-    { name: 'Contact', href: '#contact' },
+    { name: t.nav.hardwareServices, href: '#services' },
+    { name: t.nav.webApps, href: '#web-apps' },
+    { name: t.nav.freeTools, href: '#free-tools', badge: t.nav.newBadge },
+    { name: t.nav.portfolio, href: '#portfolio' },
+    { name: t.nav.values, href: '#values' },
+    { name: t.nav.reviews, href: '#reviews' },
+    { name: t.nav.contact, href: '#contact' },
   ];
 
   const handleWhatsAppDirect = () => {
-    const url = `https://wa.me/${BRAND_INFO.whatsappNumber}?text=${encodeURIComponent(BRAND_INFO.whatsappMessage)}`;
+    const msg = language === 'id'
+      ? 'Halo Muh. Mahmud! Saya ingin konsultasi gratis mengenai servis hardware / pembuatan aplikasi web kustom.'
+      : 'Hi Muh. Mahmud! I am interested in a free technical consultation regarding hardware repair / custom web apps.';
+    const url = `https://wa.me/${BRAND_INFO.whatsappNumber}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
+  };
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'id' ? 'en' : 'id');
   };
 
   return (
@@ -66,11 +74,11 @@ export const Header: React.FC<HeaderProps> = ({ onOpenConsultation }) => {
                   {BRAND_INFO.name}
                 </span>
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                  Dual-Domain
+                  {t.nav.dualDomainBadge}
                 </span>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block truncate max-w-[280px]">
-                {BRAND_INFO.tagline}
+                {t.brand.tagline}
               </p>
             </div>
           </a>
@@ -93,31 +101,71 @@ export const Header: React.FC<HeaderProps> = ({ onOpenConsultation }) => {
             ))}
           </nav>
 
-          {/* Action CTAs */}
+          {/* Action CTAs & Language Switcher */}
           <div className="hidden sm:flex items-center gap-3">
+            
+            {/* Language Switcher Pill Button */}
+            <div className="flex items-center p-0.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-semibold shadow-inner">
+              <button
+                id="lang-btn-id"
+                onClick={() => setLanguage('id')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all ${
+                  language === 'id'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Ganti Bahasa ke Bahasa Indonesia"
+              >
+                <span>🇮🇩</span>
+                <span>ID</span>
+              </button>
+              <button
+                id="lang-btn-en"
+                onClick={() => setLanguage('en')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all ${
+                  language === 'en'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Switch Language to English"
+              >
+                <span>🇬🇧</span>
+                <span>EN</span>
+              </button>
+            </div>
+
             <button
               id="header-whatsapp-cta"
               onClick={handleWhatsAppDirect}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl transition-all shadow-sm hover:shadow-emerald-500/10"
-              title="Chat directly on WhatsApp for instant estimate"
+              className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-emerald-400 bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 hover:border-emerald-400/60 rounded-xl transition-all shadow-sm hover:shadow-emerald-500/10"
+              title="WhatsApp Direct Consultation"
             >
               <MessageSquare className="w-4 h-4 text-emerald-400" />
-              <span>Free Consultation</span>
-              <span className="text-[11px] opacity-75 font-mono">(WhatsApp)</span>
+              <span>{t.nav.freeConsultation}</span>
             </button>
 
             <button
               id="header-book-btn"
               onClick={() => onOpenConsultation ? onOpenConsultation('general') : document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 rounded-xl transition-all shadow-md shadow-cyan-500/20 active:scale-95"
+              className="inline-flex items-center gap-1 px-3.5 py-2 text-sm font-semibold text-slate-950 bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 rounded-xl transition-all shadow-md shadow-cyan-500/20 active:scale-95"
             >
-              <span>Get Estimate</span>
+              <span>{t.nav.getEstimate}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu & Quick Lang Switcher Button */}
           <div className="flex items-center gap-2 lg:hidden">
+            {/* Quick Lang Switcher for mobile header */}
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs font-semibold text-cyan-400"
+              title="Toggle Language (ID / EN)"
+            >
+              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{language === 'id' ? 'ID' : 'EN'}</span>
+            </button>
+
             <button
               onClick={handleWhatsAppDirect}
               className="p-2 text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-lg sm:hidden"
@@ -141,6 +189,37 @@ export const Header: React.FC<HeaderProps> = ({ onOpenConsultation }) => {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-slate-950/98 border-b border-slate-800 px-4 pt-3 pb-6 mt-3 space-y-3 shadow-2xl backdrop-blur-xl">
+          
+          {/* Mobile Language Selector */}
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 mb-2">
+            <span className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Bahasa / Language:</span>
+            </span>
+            <div className="flex items-center gap-1 text-xs">
+              <button
+                onClick={() => setLanguage('id')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                  language === 'id'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 bg-slate-950/60'
+                }`}
+              >
+                🇮🇩 Indonesia
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                  language === 'en'
+                    ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 bg-slate-950/60'
+                }`}
+              >
+                🇬🇧 English
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-1">
             {navLinks.map((link) => (
               <a
@@ -168,14 +247,14 @@ export const Header: React.FC<HeaderProps> = ({ onOpenConsultation }) => {
               className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold text-sm"
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Free Consultation via WhatsApp</span>
+              <span>{t.nav.freeConsultation} (WhatsApp)</span>
             </button>
             <a
               href="#contact"
               onClick={() => setMobileMenuOpen(false)}
               className="w-full text-center py-2.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 font-bold text-sm"
             >
-              Request Free Diagnostics / Quote
+              {t.nav.getEstimate}
             </a>
           </div>
         </div>

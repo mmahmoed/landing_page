@@ -11,14 +11,14 @@ import {
   CheckCircle2, 
   ArrowRight, 
   Clock, 
-  Tag, 
   Calculator,
   MessageSquare,
-  Wrench,
-  ShieldCheck
+  Wrench
 } from 'lucide-react';
-import { SERVICES_DATA, BRAND_INFO } from '../data/landingData';
+import { getServicesData, BRAND_INFO } from '../data/landingData';
 import { ServiceItem } from '../types';
+import { useLanguage } from '../context/LanguageContext';
+import { TRANSLATIONS } from '../data/translations';
 
 interface ServicesSectionProps {
   initialTab?: 'hardware-pc' | 'web-dev';
@@ -27,13 +27,16 @@ interface ServicesSectionProps {
 
 export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = 'hardware-pc', onBookService }) => {
   const [activeTab, setActiveTab] = useState<'hardware-pc' | 'web-dev'>(initialTab);
+  const { language } = useLanguage();
+  const t = TRANSLATIONS[language];
   
   // Interactive Instant Quote Estimator State
-  const [showEstimator, setShowEstimator] = useState<boolean>(false);
   const [estType, setEstType] = useState<'hardware' | 'web'>('web');
   const [estService, setEstService] = useState<string>('pos');
   const [estUrgency, setEstUrgency] = useState<'standard' | 'rush'>('standard');
   const [estSupport, setEstSupport] = useState<boolean>(true);
+
+  const services = getServicesData(language);
 
   const getIcon = (iconName: string) => {
     switch (iconName) {
@@ -49,38 +52,69 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
     }
   };
 
-  const filteredServices = SERVICES_DATA.filter(s => s.category === activeTab);
+  const filteredServices = services.filter(s => s.category === activeTab);
 
   // Estimator calculation
   const calculateEstimate = () => {
-    let base = 0;
-    let timeframe = '2-3 Weeks';
+    const isId = language === 'id';
 
-    if (estType === 'web') {
-      if (estService === 'pos') { base = 1450; timeframe = '2-4 Weeks'; }
-      else if (estService === 'asset') { base = 1800; timeframe = '3-5 Weeks'; }
-      else if (estService === 'saas') { base = 1200; timeframe = '2-4 Weeks'; }
-      else if (estService === 'api') { base = 650; timeframe = '1-2 Weeks'; }
+    if (isId) {
+      let base = 0;
+      let timeframe = '2–3 Minggu';
+
+      if (estType === 'web') {
+        if (estService === 'pos') { base = 4500000; timeframe = '2–4 Minggu'; }
+        else if (estService === 'asset') { base = 6000000; timeframe = '3–5 Minggu'; }
+        else if (estService === 'saas') { base = 3500000; timeframe = '2–4 Minggu'; }
+        else if (estService === 'api') { base = 1500000; timeframe = '1–2 Minggu'; }
+      } else {
+        if (estService === 'diag') { base = 150000; timeframe = '24–48 Jam'; }
+        else if (estService === 'repasting') { base = 200000; timeframe = '1–2 Hari'; }
+        else if (estService === 'recovery') { base = 250000; timeframe = '12–36 Jam'; }
+        else if (estService === 'network') { base = 500000; timeframe = 'Sesuai Jadwal'; }
+      }
+
+      if (estUrgency === 'rush') base *= 1.3;
+      if (estSupport && estType === 'web') base += 500000;
+
+      return {
+        formattedPrice: `Rp ${Math.round(base).toLocaleString('id-ID')}`,
+        rawPrice: Math.round(base),
+        timeframe,
+      };
     } else {
-      if (estService === 'diag') { base = 65; timeframe = '24-48 Hours'; }
-      else if (estService === 'repasting') { base = 85; timeframe = '1-2 Days'; }
-      else if (estService === 'recovery') { base = 110; timeframe = '12-36 Hours'; }
-      else if (estService === 'network') { base = 250; timeframe = 'Scheduled'; }
+      let base = 0;
+      let timeframe = '2-3 Weeks';
+
+      if (estType === 'web') {
+        if (estService === 'pos') { base = 1450; timeframe = '2-4 Weeks'; }
+        else if (estService === 'asset') { base = 1800; timeframe = '3-5 Weeks'; }
+        else if (estService === 'saas') { base = 1200; timeframe = '2-4 Weeks'; }
+        else if (estService === 'api') { base = 650; timeframe = '1-2 Weeks'; }
+      } else {
+        if (estService === 'diag') { base = 65; timeframe = '24-48 Hours'; }
+        else if (estService === 'repasting') { base = 85; timeframe = '1-2 Days'; }
+        else if (estService === 'recovery') { base = 110; timeframe = '12-36 Hours'; }
+        else if (estService === 'network') { base = 250; timeframe = 'Scheduled'; }
+      }
+
+      if (estUrgency === 'rush') base *= 1.35;
+      if (estSupport && estType === 'web') base += 150;
+
+      return {
+        formattedPrice: `~$${Math.round(base).toLocaleString('en-US')}`,
+        rawPrice: Math.round(base),
+        timeframe,
+      };
     }
-
-    if (estUrgency === 'rush') base *= 1.35;
-    if (estSupport && estType === 'web') base += 150;
-
-    return {
-      price: Math.round(base),
-      timeframe,
-    };
   };
 
   const currentEst = calculateEstimate();
 
   const handleEstimateWhatsApp = () => {
-    const text = `Hi Muh. Mahmud! I used your online estimator for a ${estType === 'web' ? 'Custom Web Project' : 'Hardware Repair'} (${estService.toUpperCase()}). Estimated quote ~$${currentEst.price}. Can we discuss details?`;
+    const text = language === 'id'
+      ? `Halo Muh. Mahmud! Saya menggunakan kalkulator estimasi online untuk ${estType === 'web' ? 'Proyek Aplikasi Web' : 'Servis PC & Hardware'} (${estService.toUpperCase()}). Perkiraan estimasi: ${currentEst.formattedPrice} (${currentEst.timeframe}). Bisakah kita diskusikan lebih lanjut?`
+      : `Hi Muh. Mahmud! I used your online estimator for a ${estType === 'web' ? 'Custom Web Project' : 'Hardware Repair'} (${estService.toUpperCase()}). Estimated quote ${currentEst.formattedPrice}. Can we discuss details?`;
     window.open(`https://wa.me/${BRAND_INFO.whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -94,13 +128,13 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
         <div className="text-center max-w-3xl mx-auto mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-3">
             <Wrench className="w-3.5 h-3.5" />
-            <span>Dual Engineering Specializations</span>
+            <span>{t.services.badge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight">
-            Specialized Technical Services
+            {t.services.title}
           </h2>
           <p className="mt-4 text-slate-300 text-base sm:text-lg">
-            Whether reviving critical hardware on the test bench or engineering custom web software architectures with zero subscription bloat.
+            {t.services.subtitle}
           </p>
 
           {/* Division Tabs */}
@@ -115,7 +149,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
               }`}
             >
               <Cpu className="w-4 h-4 text-amber-400" />
-              <span>Hardware, PC Repair & Network</span>
+              <span>{t.services.tabHardware}</span>
             </button>
 
             <button
@@ -128,7 +162,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
               }`}
             >
               <Code2 className="w-4 h-4 text-cyan-400" />
-              <span>Custom Web & App Development</span>
+              <span>{t.services.tabWeb}</span>
             </button>
           </div>
         </div>
@@ -184,7 +218,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
                     <Clock className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Turnaround: <strong className="text-slate-200">{service.typicalTurnaround}</strong></span>
+                    <span>{t.services.turnaroundPrefix}: <strong className="text-slate-200">{service.typicalTurnaround}</strong></span>
                   </div>
                   <div className="text-xs font-semibold text-emerald-400 font-mono">
                     {service.startingPrice}
@@ -192,10 +226,19 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
                 </div>
 
                 <button
-                  onClick={() => onBookService ? onBookService(service) : window.open(`https://wa.me/${BRAND_INFO.whatsappNumber}?text=${encodeURIComponent(`Hi Alex! I'd like to book/inquire about "${service.title}".`)}`, '_blank')}
+                  onClick={() => {
+                    if (onBookService) {
+                      onBookService(service);
+                    } else {
+                      const msg = language === 'id'
+                        ? `Halo Muh. Mahmud! Saya ingin konsultasi/pesan layanan "${service.title}".`
+                        : `Hi Muh. Mahmud! I'd like to book/inquire about "${service.title}".`;
+                      window.open(`https://wa.me/${BRAND_INFO.whatsappNumber}?text=${encodeURIComponent(msg)}`, '_blank');
+                    }
+                  }}
                   className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-900 bg-slate-200 hover:bg-white rounded-xl transition-all shadow-sm hover:scale-[1.02] active:scale-95"
                 >
-                  <span>Book / Inquire</span>
+                  <span>{t.services.bookServiceBtn}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -209,37 +252,39 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
             <div className="flex items-center gap-2">
               <Calculator className="w-5 h-5 text-cyan-400" />
               <h3 className="text-lg font-bold text-white">
-                Instant Project & Repair Cost Estimator
+                {t.services.estimatorTitle}
               </h3>
             </div>
-            <span className="text-xs font-mono text-emerald-400">Fixed-Rate Transparency</span>
+            <span className="text-xs font-mono text-emerald-400">
+              {language === 'id' ? 'Transparansi Biaya Pasti' : 'Fixed-Rate Transparency'}
+            </span>
           </div>
 
           <p className="text-xs text-slate-400 mb-6">
-            Get an instant estimate for your custom web app or hardware repair requirements with zero hidden markup.
+            {t.services.estimatorSubtitle}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             {/* Field 1: Category */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Domain</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">{t.services.estScopeLabel}</label>
               <select
                 value={estType}
                 onChange={(e) => {
-                  const t = e.target.value as 'hardware' | 'web';
-                  setEstType(t);
-                  setEstService(t === 'web' ? 'pos' : 'diag');
+                  const val = e.target.value as 'hardware' | 'web';
+                  setEstType(val);
+                  setEstService(val === 'web' ? 'pos' : 'diag');
                 }}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-cyan-500 focus:outline-none"
               >
-                <option value="web">Custom Web App Dev</option>
-                <option value="hardware">PC Repair & Network</option>
+                <option value="web">{t.services.estTypeWeb}</option>
+                <option value="hardware">{t.services.estTypeHardware}</option>
               </select>
             </div>
 
             {/* Field 2: Service Scope */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Scope / System</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">{t.services.estTimelineLabel}</label>
               <select
                 value={estService}
                 onChange={(e) => setEstService(e.target.value)}
@@ -247,17 +292,17 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
               >
                 {estType === 'web' ? (
                   <>
-                    <option value="pos">Custom Point-of-Sale (POS) System</option>
-                    <option value="asset">Asset / Inventory Management ERP</option>
-                    <option value="saas">Custom Operational Dashboard / SaaS</option>
-                    <option value="api">API Automation & Webhooks</option>
+                    <option value="pos">{language === 'id' ? 'Aplikasi Kasir POS Kustom' : 'Custom POS System'}</option>
+                    <option value="asset">{language === 'id' ? 'Portal Manajemen Aset & Inventaris' : 'Asset / Inventory ERP'}</option>
+                    <option value="saas">{language === 'id' ? 'Dashboard SaaS & Operasional Bisnis' : 'Custom SaaS / Dashboard'}</option>
+                    <option value="api">{language === 'id' ? 'Integrasi API & Bot Otomasi' : 'API Automation & Webhooks'}</option>
                   </>
                 ) : (
                   <>
-                    <option value="diag">Motherboard / Bench Diagnostics</option>
-                    <option value="repasting">Thermal Overhaul & Repasting</option>
-                    <option value="recovery">Data Recovery & SSD Migration</option>
-                    <option value="network">SMB Office Network / VLAN Deployment</option>
+                    <option value="diag">{language === 'id' ? 'Diagnostik & Servis Motherboard' : 'Motherboard / Bench Diagnostics'}</option>
+                    <option value="repasting">{language === 'id' ? 'Optimasi Termal & Ganti Thermal Pad' : 'Thermal Overhaul & Repasting'}</option>
+                    <option value="recovery">{language === 'id' ? 'Data Recovery & Kloning NVMe SSD' : 'Data Recovery & SSD Migration'}</option>
+                    <option value="network">{language === 'id' ? 'Instalasi Jaringan Kantor & VLAN' : 'SMB Office Network / VLAN'}</option>
                   </>
                 )}
               </select>
@@ -265,14 +310,14 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
 
             {/* Field 3: Urgency */}
             <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Delivery Tier</label>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">{t.services.estSupportLabel}</label>
               <select
                 value={estUrgency}
                 onChange={(e) => setEstUrgency(e.target.value as 'standard' | 'rush')}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:border-cyan-500 focus:outline-none"
               >
-                <option value="standard">Standard Agile Delivery</option>
-                <option value="rush">Priority Fast-Track (+35%)</option>
+                <option value="standard">{language === 'id' ? 'Pengerjaan Standar Reguler' : 'Standard Agile Delivery'}</option>
+                <option value="rush">{language === 'id' ? 'Prioritas Cepat Express (+30%)' : 'Priority Fast-Track (+30%)'}</option>
               </select>
             </div>
           </div>
@@ -280,9 +325,9 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
           {/* Result Output Bar */}
           <div className="p-4 rounded-xl bg-slate-950 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] text-slate-400 uppercase font-mono">Estimated Baseline</span>
+              <span className="text-[10px] text-slate-400 uppercase font-mono">{t.services.estResultTitle}</span>
               <div className="text-2xl font-black text-cyan-400 font-mono">
-                ~${currentEst.price.toLocaleString()}
+                {currentEst.formattedPrice}
                 <span className="text-xs font-normal text-slate-400 ml-2">({currentEst.timeframe})</span>
               </div>
             </div>
@@ -292,7 +337,7 @@ export const ServicesSection: React.FC<ServicesSectionProps> = ({ initialTab = '
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all"
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Discuss Quote on WhatsApp</span>
+              <span>{t.services.estWhatsAppBtn}</span>
             </button>
           </div>
         </div>

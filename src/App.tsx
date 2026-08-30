@@ -9,18 +9,19 @@ import { TestimonialsSection } from './components/TestimonialsSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { ServiceItem } from './types';
+import { LanguageProvider } from './context/LanguageContext';
 
-export default function App() {
+function MainLandingContent() {
   const [activeServiceTab, setActiveServiceTab] = useState<'hardware-pc' | 'web-dev'>('web-dev');
 
-  const handleOpenConsultation = (defaultCategory?: string) => {
+  const handleOpenConsultation = () => {
     const contactElem = document.getElementById('contact');
     if (contactElem) {
       contactElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  const handleBookService = (service: ServiceItem) => {
+  const handleBookService = (_service: ServiceItem) => {
     const contactElem = document.getElementById('contact');
     if (contactElem) {
       contactElem.scrollIntoView({ behavior: 'smooth' });
@@ -29,7 +30,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 selection:bg-cyan-500/20 selection:text-cyan-300 font-sans">
-      {/* 1. Header (Brand, Navigation, WhatsApp CTA) */}
+      {/* 1. Header (Brand, Navigation, Language Switcher ID/EN, WhatsApp CTA) */}
       <Header onOpenConsultation={handleOpenConsultation} />
 
       <main>
@@ -61,5 +62,13 @@ export default function App() {
       {/* 9. Footer (Location, Hours, Contact, Social Media, Copyright) */}
       <Footer />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <LanguageProvider>
+      <MainLandingContent />
+    </LanguageProvider>
   );
 }

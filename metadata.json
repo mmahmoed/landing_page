@@ -1,6 +1,6 @@
 {
-  "name": "TechPro Solutions - Web & PC Services",
-  "description": "Full-stack web application development, hardware diagnostics, network maintenance, and client-side browser utilities including an Excel Document Compressor.",
+  "name": "MMComp Solutions | Web & PC Engineering",
+  "description": "Layanan profesional servis PC, diagnostik hardware, instalasi jaringan, dan pembuatan aplikasi web custom (POS, ERP Aset) oleh Muh. Mahmud.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
 import { 
   Star, 
-  Quote, 
-  CheckCircle2, 
-  ShieldCheck, 
-  ThumbsUp, 
-  Award,
-  Sparkles,
-  MessageSquare
+  CheckCircle2
 } from 'lucide-react';
-import { TESTIMONIALS, BRAND_INFO } from '../data/landingData';
+import { getTestimonialsData } from '../data/landingData';
+import { useLanguage } from '../context/LanguageContext';
+import { TRANSLATIONS } from '../data/translations';
 
 export const TestimonialsSection: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const { language } = useLanguage();
+  const t = TRANSLATIONS[language];
+  const testimonials = getTestimonialsData(language);
 
-  const categories = ['All', 'Web Development', 'PC Repair & Hardware', 'Network Infrastructure'];
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const filteredTestimonials = selectedCategory === 'All'
-    ? TESTIMONIALS
-    : TESTIMONIALS.filter(t => t.serviceCategory === selectedCategory);
+  const categories = [
+    { key: 'all', label: language === 'id' ? 'Semua' : 'All' },
+    { key: 'Web Development', label: 'Web Development' },
+    { key: 'PC Repair & Hardware', label: language === 'id' ? 'Servis PC & Hardware' : 'PC Repair & Hardware' },
+    { key: 'Network Infrastructure', label: language === 'id' ? 'Infrastruktur Jaringan' : 'Network Infrastructure' },
+  ];
+
+  const filteredTestimonials = selectedCategory === 'all'
+    ? testimonials
+    : testimonials.filter(item => item.serviceCategory === selectedCategory);
 
   return (
     <section id="reviews" className="py-24 bg-slate-900/60 relative border-t border-b border-slate-800/80">
@@ -28,13 +33,13 @@ export const TestimonialsSection: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto mb-14">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold uppercase tracking-wider mb-3">
             <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span>Verified Client Feedback</span>
+            <span>{t.testimonials.badge}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Trusted by Business Owners & Power Users
+            {t.testimonials.title}
           </h2>
           <p className="mt-3 text-slate-300 text-base sm:text-lg">
-            Hear directly from clients who rely on our custom software platforms and mission-critical hardware repairs every day.
+            {t.testimonials.subtitle}
           </p>
 
           {/* Aggregate Rating Badge */}
@@ -45,11 +50,11 @@ export const TestimonialsSection: React.FC = () => {
               ))}
             </div>
             <div className="text-xs text-slate-300 font-medium">
-              <strong className="text-white font-bold">4.98 / 5.0 Rating</strong> across 140+ Projects
+              <strong className="text-white font-bold">{t.testimonials.satisfactionScore}</strong> {t.testimonials.scoreSubtitle}
             </div>
             <span className="text-slate-600 hidden sm:inline">•</span>
             <div className="text-xs text-emerald-400 font-mono hidden sm:inline">
-              100% Verified Deliveries
+              {t.testimonials.verifiedBadge}
             </div>
           </div>
 
@@ -57,15 +62,15 @@ export const TestimonialsSection: React.FC = () => {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
             {categories.map((cat) => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={cat.key}
+                onClick={() => setSelectedCategory(cat.key)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  selectedCategory === cat
+                  selectedCategory === cat.key
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
                     : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
-                {cat}
+                {cat.label}
               </button>
             ))}
           </div>
@@ -116,7 +121,9 @@ export const TestimonialsSection: React.FC = () => {
                 </div>
 
                 <div className="text-right hidden sm:block">
-                  <div className="text-[10px] text-slate-500 uppercase font-mono">Delivered</div>
+                  <div className="text-[10px] text-slate-500 uppercase font-mono">
+                    {language === 'id' ? 'Terselesaikan' : 'Delivered'}
+                  </div>
                   <div className="text-xs font-semibold text-emerald-400 flex items-center gap-1 mt-0.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{review.verifiedProject}</span>
